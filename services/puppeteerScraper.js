@@ -29,8 +29,9 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function searchLeads({ niche, city, state, limit = 20, extraKeywords = '' }) {
     console.log(`Starting headless browser for searching ${niche}...`);
     const browser = await puppeteer.launch({
-        headless: 'new', // or true
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: 'new',
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
 
     const page = await browser.newPage();
