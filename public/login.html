@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — ROTA 100K</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFF600;
+            --primary-hover: #E5DD00;
+            --bg-main: #050505;
+            --card-bg: rgba(15, 15, 15, 0.7);
+            --input-bg: rgba(25, 25, 25, 0.9);
+            --text-primary: #FFFFFF;
+            --text-muted: #A1A1AA;
+            --border: rgba(255, 246, 0, 0.15);
+            --error: #EF4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1a1a00 0%, var(--bg-main) 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            overflow: hidden;
+        }
+
+        /* Animated background particles */
+        .bg-glow {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+            animation: float 12s ease-in-out infinite;
+        }
+        .bg-glow-1 { background: rgba(255, 246, 0, 0.3); top: -100px; left: -100px; }
+        .bg-glow-2 { background: rgba(255, 246, 0, 0.1); bottom: -150px; right: -100px; animation-delay: -6s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 20px) scale(1.1); }
+        }
+
+        .login-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: -0.05em;
+            color: var(--primary);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #FFFFFF;
+        }
+
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.25s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 246, 0, 0.15);
+            background: rgba(25, 25, 25, 0.9);
+        }
+
+        input::placeholder { color: #475569; }
+
+        .login-btn {
+            width: 100%;
+            background: var(--primary);
+            color: #000000; 
+            border: none;
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 15px rgba(255, 246, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(0,0,0,0.1));
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            background: var(--primary-hover);
+            box-shadow: 0 8px 20px rgba(255, 246, 0, 0.3);
+        }
+
+        .login-btn:hover::before { opacity: 1; }
+
+        .login-btn:active { transform: translateY(0); }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: #F87171;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            display: none;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .error-msg.show { display: block; }
+
+        .loader-sm {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(0,0,0,0.2);
+            border-radius: 50%;
+            border-top-color: #000000;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .footer-note span {
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div class="login-container">
+        <div class="logo-box">Lead Miner</div>
+
+        <div class="login-header">
+            <h1>Lead Miner</h1>
+            <p>Acesse sua plataforma de extração de leads.</p>
+        </div>
+
+        <div class="error-msg" id="error-msg">Usuário ou senha incorretos.</div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" placeholder="Seu usuário" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Sua senha" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="login-btn" id="login-btn">
+                <span class="btn-label">Entrar</span>
+                <div class="loader-sm" id="loader"></div>
+            </button>
+        </form>
+
+        <div class="footer-note">
+            Acesso exclusivo — <span>U3 Company</span>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('login-btn');
+            const btnLabel = btn.querySelector('.btn-label');
+            const loader = document.getElementById('loader');
+            const errorMsg = document.getElementById('error-msg');
+
+            // Loading state
+            btn.disabled = true;
+            btnLabel.textContent = 'Verificando...';
+            loader.style.display = 'block';
+            errorMsg.classList.remove('show');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorMsg.textContent = data.error || 'Usuário ou senha incorretos.';
+                    errorMsg.classList.add('show');
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Erro ao conectar com o servidor.';
+                errorMsg.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btnLabel.textContent = 'Entrar';
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

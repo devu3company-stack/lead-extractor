@@ -3,3 +3,6 @@ node_modules/
 credentials.json
 leads.csv
 .DS_Store
+.vercel
+firebase-service-account.json
+.npm-cache/

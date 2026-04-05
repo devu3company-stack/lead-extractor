@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity Lead Miner</title>
+    <title>Lead Miner (U3 Company) - Extrator de Leads</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
+        <nav class="top-bar">
+            <span class="user-badge" id="user-badge">👤 —</span>
+            <button class="logout-btn" id="logout-btn" title="Sair">Sair ↗</button>
+        </nav>
+
         <header>
-            <h1>Antigravity Miner</h1>
-            <p>Extração automática de leads direto do Google Places para o seu CRM.</p>
+            <h1><span style="color: var(--primary);">LEAD</span> MINER</h1>
+            <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-top: 5px;">U3 COMPANY - Extrator Pro</p>
         </header>
         
         <main>
@@ -52,6 +57,13 @@
                     <span class="loader hidden"></span>
                 </button>
             </form>
+
+            <div id="progress-container" class="progress-container hidden">
+                <p class="progress-text">Buscando os dados... aguarde.</p>
+                <div class="progress-bar">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            </div>
 
             <div id="result-area" class="hidden">
                 <div class="status-card success">
