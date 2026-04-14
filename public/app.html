@@ -3,84 +3,466 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lead Miner (U3 Company) - Extrator de Leads</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Lead Miner — Extrator de Leads | U3 Company</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFF600;
+            --primary-hover: #E5DD00;
+            --bg: #050505;
+            --card: rgba(15,15,15,0.85);
+            --input-bg: rgba(20,20,20,0.9);
+            --border: rgba(255,246,0,0.15);
+            --text: #FFFFFF;
+            --muted: #A1A1AA;
+            --error: #EF4444;
+            --success: #22c55e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1a1a00 0%, var(--bg) 60%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* TOP BAR */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(5,5,5,0.8);
+        }
+        .logo { font-weight: 800; font-size: 1.2rem; color: var(--primary); letter-spacing: -0.02em; }
+        .user-badge { font-size: 0.85rem; color: var(--muted); }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* MAIN */
+        .container { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+        header { text-align: center; margin-bottom: 2.5rem; }
+        header h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; }
+        header h1 span { color: var(--primary); }
+        header p { color: var(--muted); margin-top: 0.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* FORM CARD */
+        .form-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
+        }
+
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        input, select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255,246,0,0.12);
+        }
+        input::placeholder { color: #475569; }
+        select option { background: #111; }
+
+        .submit-btn {
+            width: 100%;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.6rem;
+            margin-top: 1.25rem;
+            transition: all 0.25s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .submit-btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,246,0,0.3); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* SPINNER */
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2.5px solid rgba(0,0,0,0.2);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PROGRESS */
+        .progress-wrap {
+            background: rgba(255,246,0,0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .progress-label { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
+        .progress-bar { background: rgba(255,255,255,0.05); border-radius: 999px; height: 6px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 999px; transition: width 0.4s ease; }
+
+        /* STATUS MESSAGES */
+        .status-box {
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .status-box.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #FCA5A5; }
+        .status-box.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #86EFAC; }
+
+        /* LEADS TABLE */
+        .leads-section { display: none; }
+        .leads-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .leads-header h2 { font-size: 1.1rem; font-weight: 700; }
+        .leads-count {
+            background: rgba(255,246,0,0.1);
+            border: 1px solid var(--border);
+            color: var(--primary);
+            padding: 0.3rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .table-wrap {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        thead th {
+            background: rgba(255,246,0,0.05);
+            padding: 0.85rem 1rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,246,0,0.03); }
+        tbody td {
+            padding: 0.85rem 1rem;
+            font-size: 0.85rem;
+            color: #E2E8F0;
+            vertical-align: middle;
+        }
+        .td-nome { font-weight: 600; color: #fff; max-width: 180px; }
+        .td-addr { color: var(--muted); font-size: 0.78rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .badge-rank {
+            display: inline-block;
+            background: rgba(255,246,0,0.1);
+            color: var(--primary);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .btn-wa {
+            display: inline-block;
+            background: #25D366;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .btn-wa:hover { background: #128C7E; }
+        .link-small { color: #60A5FA; font-size: 0.78rem; text-decoration: none; }
+        .link-small:hover { text-decoration: underline; }
+        .no-phone { color: var(--muted); font-size: 0.78rem; font-style: italic; }
+
+        @media (max-width: 640px) {
+            .form-row { grid-template-columns: 1fr; }
+            header h1 { font-size: 1.8rem; }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="top-bar">
-            <span class="user-badge" id="user-badge">👤 —</span>
-            <button class="logout-btn" id="logout-btn" title="Sair">Sair ↗</button>
-        </nav>
 
-        <header>
-            <h1><span style="color: var(--primary);">LEAD</span> MINER</h1>
-            <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-top: 5px;">U3 COMPANY - Extrator Pro</p>
-        </header>
-        
-        <main>
-            <form id="extractor-form">
-                <div class="form-group">
+<nav class="top-bar">
+    <div class="logo">⛏ Lead Miner</div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+        <span class="user-badge" id="user-badge">👤 —</span>
+        <button class="logout-btn" id="logout-btn">Sair ↗</button>
+    </div>
+</nav>
+
+<div class="container">
+    <header>
+        <h1><span>LEAD</span> MINER</h1>
+        <p>U3 Company · Extrator Pro</p>
+    </header>
+
+    <div class="form-card">
+        <form id="extractor-form">
+            <div class="form-grid">
+                <div>
                     <label for="niche">Nicho</label>
                     <input type="text" id="niche" placeholder="Ex: dentista, pizzaria, móveis planejados" required>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
+                    <div>
                         <label for="city">Cidade</label>
-                        <input type="text" id="city" placeholder="Ex: Mogi Mirim" required>
+                        <input type="text" id="city" placeholder="Ex: Campinas" required>
                     </div>
-                    <div class="form-group">
+                    <div>
                         <label for="state">Estado (UF)</label>
                         <input type="text" id="state" placeholder="Ex: SP" required>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="limit">Quantidade (Limite)</label>
+                    <div>
+                        <label for="limit">Quantidade</label>
                         <select id="limit">
-                            <option value="20">20 resultados (Lote normal)</option>
-                            <option value="50">50 resultados (Lote médio)</option>
-                            <option value="100">100 resultados (Lote MÁX)</option>
+                            <option value="20">20 resultados (Normal)</option>
+                            <option value="50">50 resultados (Médio)</option>
+                            <option value="100">100 resultados (Máximo)</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div>
                         <label for="extraKeywords">Palavra-chave extra (Opcional)</label>
                         <input type="text" id="extraKeywords" placeholder="Ex: 24h, delivery, clínica">
                     </div>
                 </div>
-
-                <button type="submit" id="submit-btn">
-                    <span class="btn-text">Iniciar Extração</span>
-                    <span class="loader hidden"></span>
-                </button>
-            </form>
-
-            <div id="progress-container" class="progress-container hidden">
-                <p class="progress-text">Buscando os dados... aguarde.</p>
-                <div class="progress-bar">
-                    <div class="progress-bar-fill"></div>
-                </div>
             </div>
 
-            <div id="result-area" class="hidden">
-                <div class="status-card success">
-                    <h3>Extração Concluída!</h3>
-                    <p id="result-message"></p>
-                </div>
-            </div>
-            
-            <div id="error-area" class="hidden">
-                <div class="status-card error">
-                    <h3>Aviso na Execução</h3>
-                    <p id="error-message"></p>
-                </div>
-            </div>
-        </main>
+            <button type="submit" class="submit-btn" id="submit-btn">
+                <div class="spinner" id="spinner"></div>
+                <span id="btn-label">⚡ Iniciar Extração</span>
+            </button>
+        </form>
     </div>
-    
-    <script src="script.js"></script>
+
+    <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-label" id="progress-label">🤖 Conectando à SerpAPI...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <div class="status-box error" id="error-box"></div>
+    <div class="status-box success" id="success-box"></div>
+
+    <div class="leads-section" id="leads-section">
+        <div class="leads-header">
+            <h2>Leads Extraídos</h2>
+            <span class="leads-count" id="leads-count">0 leads</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>Endereço</th>
+                        <th>Avaliação</th>
+                        <th>WhatsApp</th>
+                        <th>Links</th>
+                    </tr>
+                </thead>
+                <tbody id="leads-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auth check
+(async () => {
+    try {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (data.authenticated) {
+            document.getElementById('user-badge').textContent = `👤 ${data.user}`;
+        } else {
+            window.location.href = '/login.html';
+        }
+    } catch {
+        window.location.href = '/login.html';
+    }
+})();
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+});
+
+document.getElementById('extractor-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const niche = document.getElementById('niche').value.trim();
+    const city  = document.getElementById('city').value.trim();
+    const state = document.getElementById('state').value.trim();
+    const limit = parseInt(document.getElementById('limit').value);
+    const extraKeywords = document.getElementById('extraKeywords').value.trim();
+
+    const btn          = document.getElementById('submit-btn');
+    const btnLabel     = document.getElementById('btn-label');
+    const spinner      = document.getElementById('spinner');
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressFill = document.getElementById('progress-fill');
+    const progressLabel = document.getElementById('progress-label');
+    const errorBox     = document.getElementById('error-box');
+    const successBox   = document.getElementById('success-box');
+    const leadsSection = document.getElementById('leads-section');
+
+    // Reset
+    errorBox.style.display = 'none';
+    successBox.style.display = 'none';
+    leadsSection.style.display = 'none';
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnLabel.textContent = 'Extraindo...';
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%';
+
+    // Fake progress animation
+    let progress = 0;
+    const tick = setInterval(() => {
+        if (progress < 85) {
+            progress += Math.random() * 5 + 1;
+            progressFill.style.width = Math.min(progress, 85) + '%';
+            if (progress > 60) progressLabel.textContent = '📡 Processando resultados...';
+        }
+    }, 600);
+
+    try {
+        const res = await fetch('/api/extract-leads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ niche, city, state, limit, extraKeywords })
+        });
+
+        if (res.status === 401) { window.location.href = '/login.html'; return; }
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || data.details || 'Erro na extração');
+
+        clearInterval(tick);
+        progressFill.style.width = '100%';
+        progressLabel.textContent = '✅ Concluído!';
+
+        const leads = data.leads || [];
+
+        if (leads.length === 0) {
+            successBox.textContent = 'Extração concluída, mas nenhum lead foi encontrado para essa busca.';
+            successBox.style.display = 'block';
+        } else {
+            successBox.textContent = `✅ ${leads.length} leads encontrados para "${niche}" em ${city}-${state}!`;
+            successBox.style.display = 'block';
+            renderLeads(leads);
+        }
+
+    } catch (err) {
+        clearInterval(tick);
+        errorBox.textContent = '❌ ' + err.message;
+        errorBox.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnLabel.textContent = '⚡ Iniciar Extração';
+        setTimeout(() => { progressWrap.style.display = 'none'; progressFill.style.width = '0%'; }, 1500);
+    }
+});
+
+function renderLeads(leads) {
+    const tbody = document.getElementById('leads-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('leads-count').textContent = `${leads.length} leads`;
+
+    leads.forEach((lead, i) => {
+        const nome     = lead.nome || '-';
+        const telefone = lead.telefone || '';
+        const endereco = lead.endereco || '-';
+        const rating   = lead.rating ? `⭐ ${lead.rating} (${lead.reviews})` : '-';
+        const waLink   = lead.whatsapp_link ? `<a class="btn-wa" href="${lead.whatsapp_link}" target="_blank">WhatsApp</a>` : '<span class="no-phone">Sem número</span>';
+
+        let links = [];
+        if (lead.site)     links.push(`<a class="link-small" href="${lead.site}" target="_blank">🌐 Site</a>`);
+        if (lead.maps_url) links.push(`<a class="link-small" href="${lead.maps_url}" target="_blank">📍 Maps</a>`);
+
+        tbody.innerHTML += `
+            <tr>
+                <td><span class="badge-rank">${i + 1}</span></td>
+                <td class="td-nome">${nome}</td>
+                <td>${telefone || '<span class="no-phone">Não informado</span>'}</td>
+                <td class="td-addr" title="${endereco}">${endereco}</td>
+                <td>${rating}</td>
+                <td>${waLink}</td>
+                <td style="white-space:nowrap">${links.join(' ')}</td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('leads-section').style.display = 'block';
+    document.getElementById('leads-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
 </body>
 </html>
