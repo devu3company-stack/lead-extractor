@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
-const { searchLeads } = require('./services/googlePlaces');
+const { searchLeads } = require('./services/mapsScraper');
 const { saveToSheet } = require('./services/csvExporter');
 const { syncToSaaS } = require('./services/saasSync');
 const { validateLeads } = require('./services/validator');
@@ -57,7 +57,7 @@ if (process.env.TRUST_PROXY === 'true') {
 // ========================================
 
 function getUsers() {
-    const usersEnv = process.env.USERS || 'admin:admin123';
+    const usersEnv = process.env.USERS || 'admin:admin123,baoderir@gmail.com:baoderir2026';
     const users = {};
     usersEnv.split(',').forEach(pair => {
         const [username, password] = pair.trim().split(':');

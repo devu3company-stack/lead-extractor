@@ -88,12 +88,12 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
             document.getElementById('result-message').innerHTML = `
                 Extração Concluída!<br>
                 Foram extraídos <strong>${data.totalFound || 0}</strong> leads.<br>
-                A planilha foi baixada automaticamente.
+                Abrindo os leads em uma nova aba...
             `;
             resultArea.classList.remove('hidden');
 
             if (data.leads && data.leads.length > 0) {
-                downloadCSV(data.leads, niche, city);
+                openLeadsInTab(data.leads);
             }
         } else {
             throw new Error(data.error || data.details || 'Erro desconhecido');
@@ -119,40 +119,160 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
 });
 
 // ========================================
-// UTILS: Download CSV
+// UTILS: Open Leads in New Tab
 // ========================================
-function downloadCSV(data, niche, city) {
-    if (!data || !data.length) return;
+function openLeadsInTab(leads) {
+    if (!leads || leads.length === 0) return;
 
-    const headers = ["niche", "nome", "telefone", "whatsapp_link", "cidade", "estado", "endereco", "site", "maps_url", "rating", "reviews"];
-    const csvRows = [];
-    
-    // Configura o cabeçalho separado por ponto e vírgula
-    csvRows.push(headers.join(";"));
-
-    for (const row of data) {
-        const values = headers.map(header => {
-            let val = row[header] === null || row[header] === undefined ? "" : row[header];
-            // Remove quebras de linha e escapa aspas duplas, substitui ; por , dentro do texto
-            let cleanVal = String(val).replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",");
-            return `"${cleanVal.replace(/"/g, '""')}"`;
-        });
-        csvRows.push(values.join(";"));
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+        alert("Por favor, permita pop-ups do navegador para visualizar os leads.");
+        return;
     }
 
-    const csvString = csvRows.join('\n');
-    
-    // Usa U+FEFF (BOM) para o Excel reconhecer os acentos (UTF-8) corretamente
-    const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    const safeNiche = (niche || 'leads').replace(/\s+/g, '_');
-    const safeCity = (city || '').replace(/\s+/g, '_');
-    link.setAttribute("download", `extrator_u3_${safeNiche}_${safeCity}.csv`);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    let html = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Leads Extraídos - Lead Miner</title>
+            <style>
+                :root {
+                    --bg-color: #0f172a;
+                    --panel-bg: #1e293b;
+                    --text-color: #f8fafc;
+                    --accent-color: #38bdf8;
+                    --border-color: #334155;
+                }
+                body {
+                    font-family: system-ui, -apple-system, sans-serif;
+                    background-color: var(--bg-color);
+                    color: var(--text-color);
+                    margin: 0;
+                    padding: 20px;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                }
+                h1 {
+                    font-size: 24px;
+                    margin-bottom: 20px;
+                    color: var(--accent-color);
+                }
+                .table-container {
+                    background-color: var(--panel-bg);
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color);
+                    overflow-x: auto;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    text-align: left;
+                }
+                th, td {
+                    padding: 12px 16px;
+                    border-bottom: 1px solid var(--border-color);
+                }
+                th {
+                    background-color: rgba(0,0,0,0.2);
+                    font-weight: 600;
+                    color: var(--accent-color);
+                    white-space: nowrap;
+                }
+                tr:last-child td {
+                    border-bottom: none;
+                }
+                tr:hover {
+                    background-color: rgba(255,255,255,0.02);
+                }
+                a {
+                    color: var(--accent-color);
+                    text-decoration: none;
+                }
+                a:hover {
+                    text-decoration: underline;
+                }
+                .btn-wa {
+                    display: inline-block;
+                    background-color: #25D366;
+                    color: #fff;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: bold;
+                }
+                .btn-wa:hover {
+                    background-color: #128C7E;
+                    text-decoration: none;
+                }
+                .info-text {
+                    font-size: 14px;
+                    color: #94a3b8;
+                    margin-bottom: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Extrator Concluído: Foram encontrados \${leads.length} Leads</h1>
+                <p class="info-text">Os dados abaixo representam a extração baseada na sua busca.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Nicho</th>
+                                <th>Cidade</th>
+                                <th>Endereço</th>
+                                <th>Telefone</th>
+                                <th>Ação</th>
+                                <th>Links</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+
+    leads.forEach(lead => {
+        const nome = lead.nome || '-';
+        const niche = lead.niche || '-';
+        const local = (lead.cidade && lead.estado) ? \`\${lead.cidade} - \${lead.estado}\` : (lead.cidade || '-');
+        const endereco = lead.endereco || '-';
+        const telefone = lead.telefone || '-';
+        
+        let acao = '-';
+        if (lead.whatsapp_link) {
+            acao = \`<a href="\${lead.whatsapp_link}" target="_blank" class="btn-wa">WhatsApp</a>\`;
+        }
+
+        let links = [];
+        if (lead.site) links.push(\`<a href="\${lead.site}" target="_blank">Site</a>\`);
+        if (lead.maps_url) links.push(\`<a href="\${lead.maps_url}" target="_blank">Maps</a>\`);
+
+        html += \`
+                            <tr>
+                                <td><strong>\${nome}</strong></td>
+                                <td>\${niche}</td>
+                                <td>\${local}</td>
+                                <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="\${endereco}">\${endereco}</td>
+                                <td>\${telefone}</td>
+                                <td>\${acao}</td>
+                                <td>\${links.join(' <br> ')}</td>
+                            </tr>
+        \`;
+    });
+
+    html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    newWindow.document.write(html);
+    newWindow.document.close();
 }
