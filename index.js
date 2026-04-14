@@ -4,6 +4,7 @@ const cors = require('cors');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { searchLeads } = require('./services/serpApiScraper');
+const { sendWelcomeEmail } = require('./services/emailService');
 const { saveToSheet } = require('./services/csvExporter');
 const { syncToSaaS } = require('./services/saasSync');
 const { validateLeads } = require('./services/validator');
@@ -200,6 +201,16 @@ app.post('/api/webhook/cakto', async (req, res) => {
             }, { merge: true });
 
             console.log(`✅ User auto-provisioned via Cakto: ${email} | senha: ${password}`);
+
+            // Send welcome email with credentials
+            const loginUrl = process.env.APP_URL || 'https://lead-extractor-06u7.onrender.com/login.html';
+            await sendWelcomeEmail({
+                toEmail: email,
+                name: customer.name || 'Cliente',
+                password,
+                loginUrl
+            });
+
             return res.status(200).json({ success: true, user: email });
         }
 
