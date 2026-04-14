@@ -153,18 +153,34 @@ app.post('/api/logout', (req, res) => {
 // ========================================
 // CAKTO WEBHOOK - AUTOMATIC USER CREATION
 // ========================================
+const CAKTO_WEBHOOK_KEY = process.env.CAKTO_WEBHOOK_KEY || '46854de1-199d-4149-9b27-0eb0aa4fc206';
+
 app.post('/api/webhook/cakto', async (req, res) => {
+    // Validate Cakto secret key (sent as header x-cakto-token or as query param)
+    const token = req.headers['x-cakto-token'] || req.query.token;
+    if (token !== CAKTO_WEBHOOK_KEY) {
+        console.warn(`⚠️ Unauthorized webhook attempt. Token: ${token}`);
+        return res.status(401).send('Unauthorized');
+    }
+
     const payload = req.body;
     console.log('📦 Webhook received from Cakto:', payload.event || 'No event');
 
     try {
         // Evento de compra aprovada
         if (payload.event === 'purchase_approved' || payload.event === 'subscription_renewed') {
-            const customer = payload.data.customer;
+            const customer = payload.data?.customer;
+            if (!customer || !customer.email) {
+                console.error('❌ Webhook payload missing customer email.');
+                return res.status(400).send('Missing customer data');
+            }
+
             const email = customer.email.toLowerCase().trim();
             
-            // Usamos o CPF como senha inicial, ou o próprio e-mail se o CPF não vier
-            const password = customer.docNumber ? customer.docNumber.replace(/\D/g, '') : email;
+            // Senha inicial = CPF (só dígitos) ou primeiros 8 chars do email
+            const password = customer.docNumber
+                ? customer.docNumber.replace(/\D/g, '')
+                : email.split('@')[0].slice(0, 8) + '2026';
 
             if (!db) {
                 console.error('❌ Firestore not initialized. Cannot create user.');
@@ -173,19 +189,21 @@ app.post('/api/webhook/cakto', async (req, res) => {
 
             // Criar ou atualizar usuário no Firestore
             await db.collection('users').doc(email).set({
-                password: password, 
+                password,
                 name: customer.name || 'Cliente',
                 phone: customer.phone || '',
                 status: 'active',
-                plan: payload.data.product?.name || 'Assinatura Lead Miner',
-                updatedAt: new Date().toISOString()
+                plan: payload.data?.product?.name || 'Lead Miner — U3 Company',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                source: 'cakto'
             }, { merge: true });
 
-            console.log(`👤 User automatically created/updated: ${email}`);
-            return res.status(200).json({ success: true, message: 'User provisioned' });
+            console.log(`✅ User auto-provisioned via Cakto: ${email} | senha: ${password}`);
+            return res.status(200).json({ success: true, user: email });
         }
 
-        // Se for outro evento (ex: pix_generated), apenas confirmamos
+        // Outros eventos (pix_generated, etc.) — apenas confirmar recebimento
         return res.status(200).send('OK');
 
     } catch (error) {
