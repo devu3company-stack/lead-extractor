@@ -296,7 +296,7 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    window.location.href = '/';
+                    window.location.href = '/app.html';
                 } else {
                     errorMsg.textContent = data.error || 'Usuário ou senha incorretos.';
                     errorMsg.classList.add('show');

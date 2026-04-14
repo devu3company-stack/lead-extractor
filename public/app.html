@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Miner (U3 Company) - Extrator de Leads</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav class="top-bar">
+            <span class="user-badge" id="user-badge">👤 —</span>
+            <button class="logout-btn" id="logout-btn" title="Sair">Sair ↗</button>
+        </nav>
+
+        <header>
+            <h1><span style="color: var(--primary);">LEAD</span> MINER</h1>
+            <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.9em; margin-top: 5px;">U3 COMPANY - Extrator Pro</p>
+        </header>
+        
+        <main>
+            <form id="extractor-form">
+                <div class="form-group">
+                    <label for="niche">Nicho</label>
+                    <input type="text" id="niche" placeholder="Ex: dentista, pizzaria, móveis planejados" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">Cidade</label>
+                        <input type="text" id="city" placeholder="Ex: Mogi Mirim" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">Estado (UF)</label>
+                        <input type="text" id="state" placeholder="Ex: SP" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="limit">Quantidade (Limite)</label>
+                        <select id="limit">
+                            <option value="20">20 resultados (Lote normal)</option>
+                            <option value="50">50 resultados (Lote médio)</option>
+                            <option value="100">100 resultados (Lote MÁX)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="extraKeywords">Palavra-chave extra (Opcional)</label>
+                        <input type="text" id="extraKeywords" placeholder="Ex: 24h, delivery, clínica">
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn">
+                    <span class="btn-text">Iniciar Extração</span>
+                    <span class="loader hidden"></span>
+                </button>
+            </form>
+
+            <div id="progress-container" class="progress-container hidden">
+                <p class="progress-text">Buscando os dados... aguarde.</p>
+                <div class="progress-bar">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div id="result-area" class="hidden">
+                <div class="status-card success">
+                    <h3>Extração Concluída!</h3>
+                    <p id="result-message"></p>
+                </div>
+            </div>
+            
+            <div id="error-area" class="hidden">
+                <div class="status-card error">
+                    <h3>Aviso na Execução</h3>
+                    <p id="error-message"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
