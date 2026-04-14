@@ -62,6 +62,17 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
         }
     }, 500);
 
+    const resultWindow = window.open('', '_blank');
+    if (resultWindow) {
+        resultWindow.document.write(`
+            <html><head><title>Aguarde...</title>
+            <style>body{background:#050505;color:#fff;font-family:sans-serif;padding:2rem;} h2{color:#FFF600;}</style>
+            </head><body><h2>🤖 O robô está extraindo seus leads...</h2><p>Não feche esta aba. Ela será preenchida com a tabela em poucos instantes.</p></body></html>
+        `);
+    } else {
+        alert("Aviso: O seu navegador bloqueou a nova aba! Por favor, ative a permissão de pop-ups.");
+    }
+
     try {
         const response = await fetch('/api/extract-leads', {
             method: 'POST',
@@ -78,6 +89,7 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
         });
 
         if (response.status === 401) {
+            if(resultWindow) resultWindow.close();
             window.location.href = '/login.html';
             return;
         }
@@ -88,12 +100,14 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
             document.getElementById('result-message').innerHTML = `
                 Extração Concluída!<br>
                 Foram extraídos <strong>${data.totalFound || 0}</strong> leads.<br>
-                Abrindo os leads em uma nova aba...
+                A aba foi atualizada com os resultados.
             `;
             resultArea.classList.remove('hidden');
 
             if (data.leads && data.leads.length > 0) {
-                openLeadsInTab(data.leads);
+                openLeadsInTab(data.leads, resultWindow);
+            } else if (resultWindow) {
+                resultWindow.close();
             }
         } else {
             throw new Error(data.error || data.details || 'Erro desconhecido');
@@ -101,6 +115,7 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
     } catch (error) {
         document.getElementById('error-message').textContent = "Falha: " + error.message;
         errorArea.classList.remove('hidden');
+        if(resultWindow) resultWindow.close();
     } finally {
         // Complete progress bar animation
         clearInterval(progressInterval);
@@ -121,10 +136,9 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
 // ========================================
 // UTILS: Open Leads in New Tab
 // ========================================
-function openLeadsInTab(leads) {
+function openLeadsInTab(leads, newWindow) {
     if (!leads || leads.length === 0) return;
 
-    const newWindow = window.open('', '_blank');
     if (!newWindow) {
         alert("Por favor, permita pop-ups do navegador para visualizar os leads.");
         return;
