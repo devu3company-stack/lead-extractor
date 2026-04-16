@@ -69,7 +69,7 @@ if (process.env.TRUST_PROXY === 'true') {
 // ========================================
 
 function getUsers() {
-    const usersEnv = process.env.USERS || 'admin:admin123,baoderir@gmail.com:baoderir2026';
+    const usersEnv = process.env.USERS || 'admin:admin123,baoderir@gmail.com:baoderir2026,capitalizzebrasil@gmail.com:admin123';
     const users = {};
     usersEnv.split(',').forEach(pair => {
         const [username, password] = pair.trim().split(':');
