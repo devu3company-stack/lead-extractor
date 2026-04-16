@@ -15,7 +15,18 @@ const admin = require('firebase-admin');
 // FIREBASE INITIALIZATION
 // ========================================
 try {
-    const serviceAccount = require('./firebase-service-account.json');
+    let serviceAccount;
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        // Produção: credenciais via variável de ambiente (JSON string)
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        console.log('🔥 Firebase: carregando credenciais via ENV...');
+    } else {
+        // Desenvolvimento local: arquivo json
+        serviceAccount = require('./firebase-service-account.json');
+        console.log('🔥 Firebase: carregando credenciais via arquivo local...');
+    }
+
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
