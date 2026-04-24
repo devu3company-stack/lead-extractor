@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin — Lead Miner | U3 Company</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFF600;
+            --primary-hover: #E5DD00;
+            --bg: #050505;
+            --card: rgba(15,15,15,0.85);
+            --input-bg: rgba(20,20,20,0.9);
+            --border: rgba(255,246,0,0.15);
+            --text: #FFFFFF;
+            --muted: #A1A1AA;
+            --error: #EF4444;
+            --success: #22c55e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1a1a00 0%, var(--bg) 60%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(5,5,5,0.8);
+        }
+        .logo { font-weight: 800; font-size: 1.2rem; color: var(--primary); letter-spacing: -0.02em; cursor: pointer; }
+        .user-badge { font-size: 0.85rem; color: var(--muted); }
+        .back-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 4rem 1.5rem; }
+
+        header { text-align: center; margin-bottom: 3rem; }
+        header h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em; }
+        header h1 span { color: var(--primary); }
+        header p { color: var(--muted); margin-top: 0.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
+
+        .form-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+
+        .form-group { margin-bottom: 1.5rem; }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.85rem 1.2rem;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255,246,0,0.12);
+        }
+        input::placeholder { color: #475569; }
+
+        .submit-btn {
+            width: 100%;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 1.1rem;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.6rem;
+            margin-top: 1rem;
+            transition: all 0.25s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .submit-btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,246,0,0.3); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2.5px solid rgba(0,0,0,0.2);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-box {
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            font-size: 0.9rem;
+            margin-top: 1.5rem;
+            display: none;
+            text-align: center;
+        }
+        .status-box.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #FCA5A5; }
+        .status-box.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #86EFAC; }
+    </style>
+</head>
+<body>
+
+<nav class="top-bar">
+    <div class="logo" onclick="window.location.href='/app.html'">⛏ Lead Miner</div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+        <span class="user-badge" id="user-badge">👤 —</span>
+        <a href="/app.html" class="back-btn">Voltar ↩</a>
+    </div>
+</nav>
+
+<div class="container">
+    <header>
+        <h1><span>ADMIN</span> PANEL</h1>
+        <p>Criação de Novos Usuários</p>
+    </header>
+
+    <div class="form-card">
+        <form id="create-user-form">
+            <div class="form-group">
+                <label for="name">Nome do Usuário</label>
+                <input type="text" id="name" placeholder="Ex: João Silva" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">E-mail (Login)</label>
+                <input type="email" id="email" placeholder="email@exemplo.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha Inicial</label>
+                <input type="text" id="password" placeholder="Defina a senha" required>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submit-btn">
+                <div class="spinner" id="spinner"></div>
+                <span id="btn-label">Criar Usuário ✅</span>
+            </button>
+        </form>
+
+        <div class="status-box error" id="error-box"></div>
+        <div class="status-box success" id="success-box"></div>
+    </div>
+</div>
+
+<script>
+// Auth and Admin check
+(async () => {
+    try {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (data.authenticated) {
+            document.getElementById('user-badge').textContent = `👤 ${data.user}`;
+            if (!data.isAdmin) {
+                alert('Acesso restrito a administradores.');
+                window.location.href = '/app.html';
+            }
+        } else {
+            window.location.href = '/login.html';
+        }
+    } catch {
+        window.location.href = '/login.html';
+    }
+})();
+
+document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    const btn = document.getElementById('submit-btn');
+    const btnLabel = document.getElementById('btn-label');
+    const spinner = document.getElementById('spinner');
+    const errorBox = document.getElementById('error-box');
+    const successBox = document.getElementById('success-box');
+
+    // Reset
+    errorBox.style.display = 'none';
+    successBox.style.display = 'none';
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnLabel.textContent = 'Criando...';
+
+    try {
+        const res = await fetch('/api/admin/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Erro ao criar usuário');
+
+        successBox.textContent = `✅ Usuário ${email} criado com sucesso!`;
+        successBox.style.display = 'block';
+        document.getElementById('create-user-form').reset();
+
+    } catch (err) {
+        errorBox.textContent = '❌ ' + err.message;
+        errorBox.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnLabel.textContent = 'Criar Usuário ✅';
+    }
+});
+</script>
+</body>
+</html>

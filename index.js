@@ -95,6 +95,18 @@ function requireAuth(req, res, next) {
     return res.redirect('/login.html');
 }
 
+// Admin only middleware
+function requireAdmin(req, res, next) {
+    if (req.session && req.session.user && (
+        req.session.user.username === 'admin' || 
+        req.session.user.username === 'capitalizzebrasil@gmail.com' ||
+        req.session.user.username === 'baoderir@gmail.com'
+    )) {
+        return next();
+    }
+    return res.status(403).json({ error: 'Acesso negado. Apenas administradores.' });
+}
+
 // ========================================
 // AUTH ROUTES (public)
 // ========================================
@@ -214,7 +226,7 @@ app.post('/api/webhook/cakto', async (req, res) => {
             console.log(`✅ User auto-provisioned via Cakto: ${email} | senha: ${password}`);
 
             // Send welcome email with credentials
-            const loginUrl = process.env.APP_URL || 'https://lead-extractor-06u7.onrender.com/login.html';
+            const loginUrl = process.env.APP_URL || 'https://ldextractor.u3company.com/login.html';
             await sendWelcomeEmail({
                 toEmail: email,
                 name: customer.name || 'Cliente',
@@ -237,7 +249,16 @@ app.post('/api/webhook/cakto', async (req, res) => {
 // Check session
 app.get('/api/me', (req, res) => {
     if (req.session && req.session.user) {
-        return res.json({ authenticated: true, user: req.session.user.username });
+        const admins = ['admin', 'capitalizzebrasil@gmail.com', 'baoderir@gmail.com', 'robsonfelix03@gmail.com'];
+        const isAdmin = admins.includes(req.session.user.username.toLowerCase());
+        
+        console.log(`🔍 [Session Check] User: ${req.session.user.username} | isAdmin: ${isAdmin}`);
+        
+        return res.json({ 
+            authenticated: true, 
+            user: req.session.user.username,
+            isAdmin: isAdmin
+        });
     }
     return res.status(401).json({ authenticated: false });
 });
@@ -253,6 +274,42 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ========================================
 // PROTECTED API ROUTES
 // ========================================
+
+// ========================================
+// ADMIN ROUTES
+// ========================================
+
+app.post('/api/admin/create-user', requireAdmin, async (req, res) => {
+    const { email, password, name } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email e senha são obrigatórios.' });
+    }
+
+    try {
+        if (!db) {
+            return res.status(500).json({ error: 'Banco de dados não inicializado.' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        await db.collection('users').doc(normalizedEmail).set({
+            password,
+            name: name || 'Novo Usuário',
+            email: normalizedEmail,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            source: 'admin-manual'
+        }, { merge: true });
+
+        console.log(`👤 Admin created user: ${normalizedEmail}`);
+        res.json({ success: true, message: `Usuário ${normalizedEmail} criado com sucesso.` });
+    } catch (error) {
+        console.error('Error creating user via admin:', error);
+        res.status(500).json({ error: 'Erro ao criar usuário.', details: error.message });
+    }
+});
 
 // Endpoint to trigger lead extraction
 app.post('/api/extract-leads', async (req, res) => {

@@ -246,6 +246,7 @@
 <nav class="top-bar">
     <div class="logo">⛏ Lead Miner</div>
     <div style="display:flex;align-items:center;gap:1rem;">
+        <a href="/admin.html" class="logout-btn" id="admin-link" style="display:none; border-color: var(--primary); color: var(--primary); text-decoration: none;">Painel Admin</a>
         <span class="user-badge" id="user-badge">👤 —</span>
         <button class="logout-btn" id="logout-btn">Sair ↗</button>
     </div>
@@ -338,7 +339,13 @@
         const res = await fetch('/api/me');
         const data = await res.json();
         if (data.authenticated) {
+            console.log('User authenticated:', data.user, 'isAdmin:', data.isAdmin);
             document.getElementById('user-badge').textContent = `👤 ${data.user}`;
+            if (data.isAdmin) {
+                const adminBtn = document.getElementById('admin-link');
+                adminBtn.style.setProperty('display', 'block', 'important');
+                console.log('Admin panel button activated');
+            }
         } else {
             window.location.href = '/login.html';
         }
