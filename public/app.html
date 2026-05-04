@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lead Miner — Extrator de Leads | U3 Company</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #FFF600;
@@ -235,6 +236,31 @@
         .link-small:hover { text-decoration: underline; }
         .no-phone { color: var(--muted); font-size: 0.78rem; font-style: italic; }
 
+        .btn-excel {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(34,197,94,0.12);
+            border: 1px solid rgba(34,197,94,0.35);
+            color: #4ade80;
+            padding: 0.45rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .btn-excel:hover {
+            background: rgba(34,197,94,0.22);
+            border-color: rgba(34,197,94,0.6);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34,197,94,0.2);
+        }
+        .btn-excel:active { transform: translateY(0); }
+
         @media (max-width: 640px) {
             .form-row { grid-template-columns: 1fr; }
             header h1 { font-size: 1.8rem; }
@@ -311,7 +337,12 @@
     <div class="leads-section" id="leads-section">
         <div class="leads-header">
             <h2>Leads Extraídos</h2>
-            <span class="leads-count" id="leads-count">0 leads</span>
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <span class="leads-count" id="leads-count">0 leads</span>
+                <button class="btn-excel" id="btn-download-excel" onclick="downloadExcel()">
+                    📥 Baixar Excel
+                </button>
+            </div>
         </div>
         <div class="table-wrap">
             <table>
@@ -438,7 +469,43 @@ document.getElementById('extractor-form').addEventListener('submit', async (e) =
     }
 });
 
+// Store leads globally for export
+let currentLeads = [];
+
+function downloadExcel() {
+    if (!currentLeads.length) return;
+
+    const rows = currentLeads.map((lead, i) => ({
+        '#':          i + 1,
+        'Nome':       lead.nome       || '',
+        'Telefone':   lead.telefone   || '',
+        'Endereço':   lead.endereco   || '',
+        'Avaliação':  lead.rating     ? `${lead.rating} (${lead.reviews} avaliações)` : '',
+        'WhatsApp':   lead.whatsapp_link || '',
+        'Site':       lead.site       || '',
+        'Google Maps':lead.maps_url   || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // Column widths
+    ws['!cols'] = [
+        { wch: 4 }, { wch: 30 }, { wch: 18 }, { wch: 40 },
+        { wch: 22 }, { wch: 45 }, { wch: 35 }, { wch: 45 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+
+    const niche = document.getElementById('niche').value.trim().replace(/\s+/g, '_') || 'leads';
+    const city  = document.getElementById('city').value.trim().replace(/\s+/g, '_')  || 'cidade';
+    const fileName = `leads_${niche}_${city}_${new Date().toISOString().slice(0,10)}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+}
+
 function renderLeads(leads) {
+    currentLeads = leads;
     const tbody = document.getElementById('leads-tbody');
     tbody.innerHTML = '';
     document.getElementById('leads-count').textContent = `${leads.length} leads`;
