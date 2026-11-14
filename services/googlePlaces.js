@@ -1,24 +1,37 @@
 const axios = require('axios');
 
-const API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchText';
+const MAX_RESULTS = 60;
+const FIELD_MASK = [
+    'places.id',
+    'places.displayName',
+    'places.formattedAddress',
+    'places.nationalPhoneNumber',
+    'places.internationalPhoneNumber',
+    'places.websiteUri',
+    'places.googleMapsUri',
+    'places.rating',
+    'places.userRatingCount',
+    'places.location',
+    'places.types',
+    'places.businessStatus',
+    'nextPageToken'
+].join(',');
 
-/**
- * Infer WhatsApp link from a phone number
- * Only works if it's a mobile number in Brazil (starting with 9 after DDD usually, but we keep it simple here)
- */
+function getApiKey() {
+    // Vercel values may contain a trailing newline when pasted through the CLI.
+    return (process.env.GOOGLE_PLACES_API_KEY || '').trim();
+}
+
 function createWhatsAppLink(phoneNumber) {
     if (!phoneNumber) return '';
-    // Remove all non-numeric characters
+
     const digits = phoneNumber.replace(/\D/g, '');
 
-    // Check if it's a full Brazilian number with country code
-    if (digits.length === 12 || digits.length === 13) {
-        if (digits.startsWith('55')) {
-            return `https://wa.me/${digits}`;
-        }
+    if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+        return `https://wa.me/${digits}`;
     }
 
-    // If it's just DDD + number (e.g. 11988887777), prepend 55
     if (digits.length === 10 || digits.length === 11) {
         return `https://wa.me/55${digits}`;
     }
@@ -26,109 +39,116 @@ function createWhatsAppLink(phoneNumber) {
     return '';
 }
 
-/**
- * Normalizes city and state to avoid duplicated entries with different cases
- */
-function normalizeLocation(city, state) {
+function normalizeLimit(limit) {
+    const parsed = Number.parseInt(limit, 10);
+    if (!Number.isFinite(parsed)) return 20;
+    return Math.min(Math.max(parsed, 1), MAX_RESULTS);
+}
+
+function mapPlaceToLead(place, { niche, city, state }, ranking) {
+    const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
+
     return {
-        normalizedCity: city.trim(), // Consider using a better normalization map
-        normalizedState: state.trim()
+        lead_id: place.id,
+        niche,
+        nome: place.displayName?.text || '',
+        telefone: phone,
+        whatsapp_link: createWhatsAppLink(phone),
+        cidade: city.trim(),
+        estado: state.trim(),
+        endereco: place.formattedAddress || '',
+        site: place.websiteUri || '',
+        maps_url: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(place.id)}`,
+        rating: place.rating || 0,
+        reviews: place.userRatingCount || 0,
+        anuncio_status: 'não identificado',
+        ranking_maps: ranking,
+        top3_maps: ranking <= 3 ? 'sim' : 'não',
+        data_coleta: new Date().toISOString(),
+        sync_status: 'novo',
+        saas_id: '',
+        obs: place.businessStatus && place.businessStatus !== 'OPERATIONAL'
+            ? `Status no Google: ${place.businessStatus}`
+            : '',
+        lat: place.location?.latitude || '',
+        lng: place.location?.longitude || '',
+        types: (place.types || []).join(','),
+        source: 'google_places'
     };
 }
 
-/**
- * Delay function to handle pagination
- */
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+function formatGoogleError(error) {
+    const status = error.response?.status;
+    const apiMessage = error.response?.data?.error?.message;
 
-/**
- * Get Place Details (to get phone, website, url)
- */
-async function getPlaceDetails(placeId) {
-    try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_phone_number,international_phone_number,website,url&key=${API_KEY}`;
-        const response = await axios.get(url);
-        return response.data.result || {};
-    } catch (error) {
-        console.error(`Error fetching details for place_id ${placeId}:`, error.message);
-        return {};
+    if (status === 403 && apiMessage?.includes('disabled')) {
+        return new Error('A Places API (New) está desativada no projeto Google Cloud. Ative places.googleapis.com e tente novamente.');
     }
+
+    if (apiMessage) {
+        return new Error(`Erro do Google Places: ${apiMessage}`);
+    }
+
+    return new Error(`Erro ao consultar o Google Places: ${error.message}`);
 }
 
-/**
- * Search Leads using Google Places Text Search API
- */
-async function searchLeads({ niche, city, state, radius, limit = 20, extraKeywords = '' }) {
-    if (!API_KEY) {
-        throw new Error("GOOGLE_PLACES_API_KEY is not defined in .env");
+async function searchLeads({ niche, city, state, limit = 20, extraKeywords = '' }) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        throw new Error('GOOGLE_PLACES_API_KEY não definida nas variáveis de ambiente');
     }
 
-    const { normalizedCity, normalizedState } = normalizeLocation(city, state);
-    const query = `${niche} ${extraKeywords} in ${normalizedCity} ${normalizedState}`.trim();
+    const requestedLimit = normalizeLimit(limit);
+    const textQuery = `${niche} ${extraKeywords} em ${city.trim()}, ${state.trim()}, Brasil`
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    let leads = [];
-    let nextPageToken = null;
-    let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${API_KEY}`;
+    const leads = [];
+    const seenPlaceIds = new Set();
+    let pageToken;
 
     try {
         do {
-            if (nextPageToken) {
-                // Wait a bit before using next_page_token (Google API requirement)
-                await delay(2000);
-                url = `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${nextPageToken}&key=${API_KEY}`;
+            const pageSize = Math.min(20, requestedLimit - leads.length);
+            const requestBody = {
+                textQuery,
+                pageSize,
+                languageCode: 'pt-BR',
+                regionCode: 'BR',
+                includePureServiceAreaBusinesses: true
+            };
+
+            if (pageToken) requestBody.pageToken = pageToken;
+
+            const response = await axios.post(PLACES_API_URL, requestBody, {
+                timeout: 20000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': apiKey,
+                    'X-Goog-FieldMask': FIELD_MASK
+                }
+            });
+
+            for (const place of response.data.places || []) {
+                if (leads.length >= requestedLimit) break;
+                if (!place.id || seenPlaceIds.has(place.id)) continue;
+
+                seenPlaceIds.add(place.id);
+                leads.push(mapPlaceToLead(place, { niche, city, state }, leads.length + 1));
             }
 
-            const response = await axios.get(url);
-            const results = response.data.results;
-
-            if (!results || results.length === 0) break;
-
-            for (const place of results) {
-                if (leads.length >= limit) break;
-
-                // Fetch details to get phone and website (which are often missing in textsearch response)
-                const details = await getPlaceDetails(place.place_id);
-
-                const phone = details.formatted_phone_number || details.international_phone_number || '';
-                const website = details.website || '';
-
-                const lead = {
-                    lead_id: place.place_id,
-                    niche: niche,
-                    nome: place.name,
-                    telefone: phone,
-                    whatsapp_link: createWhatsAppLink(phone),
-                    cidade: normalizedCity,
-                    estado: normalizedState,
-                    endereco: place.formatted_address || '',
-                    site: website,
-                    maps_url: details.url || `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
-                    rating: place.rating || 0,
-                    reviews: place.user_ratings_total || 0,
-                    anuncio_status: 'não identificado', // Placeholder for SaaS validation
-                    ranking_maps: leads.length + 1, // Basic ranking based on return order
-                    top3_maps: leads.length < 3 ? 'sim' : 'não',
-                    data_coleta: new Date().toISOString(),
-                    sync_status: 'novo',
-                    saas_id: '',
-                    obs: '',
-                    lat: place.geometry?.location?.lat || '',
-                    lng: place.geometry?.location?.lng || '',
-                    types: (place.types || []).join(', ')
-                };
-
-                leads.push(lead);
-            }
-
-            nextPageToken = response.data.next_page_token;
-
-        } while (nextPageToken && leads.length < limit);
+            pageToken = response.data.nextPageToken;
+        } while (pageToken && leads.length < requestedLimit);
 
         return leads;
     } catch (error) {
-        console.error('Error fetching leads:', error.response ? error.response.data : error.message);
-        throw error;
+        throw formatGoogleError(error);
     }
 }
 
-module.exports = { searchLeads };
+module.exports = {
+    searchLeads,
+    createWhatsAppLink,
+    mapPlaceToLead,
+    normalizeLimit
+};
