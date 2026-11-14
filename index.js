@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { searchGoogleLeads } = require('./services/googleLeadExtractor');
 const { sendWelcomeEmail } = require('./services/emailService');
@@ -10,6 +9,7 @@ const { syncToSaaS } = require('./services/saasSync');
 const { validateLeads } = require('./services/validator');
 const path = require('path');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 
 // ========================================
 // FIREBASE INITIALIZATION
@@ -45,16 +45,83 @@ app.use(express.json());
 // ========================================
 // SESSION CONFIG
 // ========================================
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'lead-miner-secret-key-change-me',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production' && process.env.TRUST_PROXY === 'true',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+// express-session's default MemoryStore is local to one serverless instance.
+// On Vercel, login and the following API request can therefore lose the
+// session. Keep the signed user payload in an HttpOnly cookie instead.
+const SESSION_COOKIE_NAME = 'lead_extractor_session';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'lead-miner-secret-key-change-me';
+
+function getCookieValue(cookieHeader, name) {
+    const prefix = `${name}=`;
+    return (cookieHeader || '').split(';').map(value => value.trim())
+        .find(value => value.startsWith(prefix))?.slice(prefix.length);
+}
+
+function signSession(payload) {
+    return crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+}
+
+function parseSession(cookieValue) {
+    if (!cookieValue) return null;
+
+    const [payload, signature] = cookieValue.split('.');
+    if (!payload || !signature) return null;
+
+    const expectedSignature = signSession(payload);
+    const received = Buffer.from(signature);
+    const expected = Buffer.from(expectedSignature);
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return null;
+
+    try {
+        const sessionData = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        return sessionData?.user && sessionData.expiresAt > Date.now() ? sessionData : null;
+    } catch {
+        return null;
     }
-}));
+}
+
+app.use((req, res, next) => {
+    const currentSession = parseSession(getCookieValue(req.headers.cookie, SESSION_COOKIE_NAME));
+    req.session = currentSession || {};
+    let destroyed = false;
+
+    req.session.destroy = (callback) => {
+        destroyed = true;
+        delete req.session.user;
+        callback?.();
+    };
+
+    const originalEnd = res.end;
+    res.end = function (...args) {
+        if (!res.headersSent) {
+            if (destroyed) {
+                res.cookie(SESSION_COOKIE_NAME, '', {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    path: '/',
+                    maxAge: 0
+                });
+            } else if (req.session.user) {
+                const payload = Buffer.from(JSON.stringify({
+                    user: req.session.user,
+                    expiresAt: Date.now() + SESSION_MAX_AGE_MS
+                })).toString('base64url');
+                res.cookie(SESSION_COOKIE_NAME, `${payload}.${signSession(payload)}`, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    path: '/',
+                    maxAge: SESSION_MAX_AGE_MS
+                });
+            }
+        }
+        return originalEnd.apply(this, args);
+    };
+
+    next();
+});
 
 // Trust proxy for Render/Railway (HTTPS behind load balancer)
 if (process.env.TRUST_PROXY === 'true') {
