@@ -14,7 +14,12 @@ async function searchGoogleLeads(params) {
         }
 
         console.warn('Google Places returned no leads; using Google Maps fallback.');
-        const fallbackLeads = await searchSerpApi(params);
+        let fallbackLeads;
+        try {
+            fallbackLeads = await searchSerpApi(params);
+        } catch (serpError) {
+            throw createProvidersUnavailableError(googleError, serpError);
+        }
         return {
             leads: fallbackLeads,
             provider: 'serpapi_google_maps',
@@ -26,7 +31,12 @@ async function searchGoogleLeads(params) {
         }
 
         console.warn(`Google Places unavailable; using Google Maps fallback: ${googleError.message}`);
-        const leads = await searchSerpApi(params);
+        let leads;
+        try {
+            leads = await searchSerpApi(params);
+        } catch (serpError) {
+            throw createProvidersUnavailableError(googleError, serpError);
+        }
 
         return {
             leads,
@@ -34,6 +44,16 @@ async function searchGoogleLeads(params) {
             fallbackReason: googleError.message
         };
     }
+}
+
+function createProvidersUnavailableError(googleError, serpError) {
+    const error = new Error(
+        `Google Places indisponível: ${googleError.message}. `
+        + `SerpAPI indisponível: ${serpError.message}. `
+        + 'Configure uma chave Google Places válida ou reponha a quota da SerpAPI.'
+    );
+    error.code = 'LEAD_PROVIDERS_UNAVAILABLE';
+    return error;
 }
 
 module.exports = { searchGoogleLeads };

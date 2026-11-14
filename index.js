@@ -416,7 +416,8 @@ app.post('/api/extract-leads', async (req, res) => {
         });
     } catch (error) {
         console.error('Error during extraction process:', error);
-        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        const status = error.code === 'LEAD_PROVIDERS_UNAVAILABLE' ? 503 : 500;
+        res.status(status).json({ error: 'Internal Server Error', details: error.message });
     }
 });
 
