@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
-const { searchLeads } = require('./services/serpApiScraper');
+const { searchGoogleLeads } = require('./services/googleLeadExtractor');
 const { sendWelcomeEmail } = require('./services/emailService');
 const { saveToSheet } = require('./services/csvExporter');
 const { syncToSaaS } = require('./services/saasSync');
@@ -323,19 +323,27 @@ app.post('/api/extract-leads', async (req, res) => {
         const user = req.session.user?.username || 'unknown';
         console.log(`[${user}] Starting extraction for ${niche} in ${city} - ${state}...`);
 
-        // 1. Fetch leads from Google Places API
-        const leads = await searchLeads({ niche, city, state, radius, limit, extraKeywords });
+        // 1. Prefer Google Places, with SerpAPI as a resilience fallback.
+        const extraction = await searchGoogleLeads({ niche, city, state, radius, limit, extraKeywords });
+        const { leads, provider } = extraction;
 
         console.log(`[${user}] Extraction finished. Found ${leads.length} leads.`);
 
-        // 2. Save results to Google Sheet
+        // 2. Keep a best-effort local CSV backup. Vercel's filesystem is
+        // read-only, so a backup failure must not turn a successful extraction
+        // into a 500 response.
         if (leads.length > 0) {
-            await saveToSheet(leads);
-            console.log(`[${user}] Successfully saved to Google Sheets.`);
+            try {
+                await saveToSheet(leads);
+                console.log(`[${user}] Successfully saved to local CSV.`);
+            } catch (csvError) {
+                console.warn(`[${user}] CSV backup skipped: ${csvError.message}`);
+            }
         }
 
         res.json({
             success: true,
+            provider,
             totalFound: leads.length,
             leads
         });
